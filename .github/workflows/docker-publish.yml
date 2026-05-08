@@ -53,7 +53,7 @@ jobs:
       # `load: true` cannot export a multi-arch manifest to the local daemon.
       # The multi-arch build follows on push to main / release.
       - name: Build image (amd64, smoke test)
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
         with:
           context: .
           file: Dockerfile
@@ -104,7 +104,7 @@ jobs:
       - name: Push multi-arch image with SHA tag (main branch)
         id: push_sha
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
         with:
           context: .
           file: Dockerfile
@@ -123,7 +123,7 @@ jobs:
 
       - name: Push multi-arch image (release)
         if: github.event_name == 'release'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f  # v7.1.0
         with:
           context: .
           file: Dockerfile
