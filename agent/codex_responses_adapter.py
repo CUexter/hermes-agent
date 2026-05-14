@@ -169,6 +169,26 @@ def _split_responses_tool_id(raw_id: Any) -> tuple[Optional[str], Optional[str]]
     return value, None
 
 
+def _normalize_responses_item_id(raw_id: Any, *, prefix: str = "msg") -> Optional[str]:
+    """Normalize Responses item IDs to API-safe length (<=64) deterministically."""
+    if not isinstance(raw_id, str):
+        return None
+    value = raw_id.strip()
+    if not value:
+        return None
+    if len(value) <= 64:
+        return value
+    digest = hashlib.sha256(value.encode("utf-8", errors="replace")).hexdigest()
+    max_body = 64 - (len(prefix) + 1)
+    shortened = digest[:max_body]
+    logger.warning(
+        "Responses item id too long (%d chars); normalized to %s_* hash.",
+        len(value),
+        prefix,
+    )
+    return f"{prefix}_{shortened}"
+
+
 def _derive_responses_function_call_id(
     call_id: str,
     response_item_id: Optional[str] = None,
@@ -328,9 +348,9 @@ def _chat_messages_to_responses_input(messages: List[Dict[str, Any]]) -> List[Di
                             "status": _normalize_responses_message_status(raw_item.get("status")),
                             "content": normalized_content_parts,
                         }
-                        item_id = raw_item.get("id")
-                        if isinstance(item_id, str) and item_id.strip():
-                            replay_item["id"] = item_id.strip()
+                        item_id = _normalize_responses_item_id(raw_item.get("id"), prefix="msg")
+                        if item_id:
+                            replay_item["id"] = item_id
                         phase = raw_item.get("phase")
                         if isinstance(phase, str) and phase.strip():
                             replay_item["phase"] = phase.strip()
@@ -910,8 +930,8 @@ def _normalize_codex_response(response: Any) -> tuple[Any, str]:
                     "status": _normalize_responses_message_status(item_status),
                     "content": [{"type": "output_text", "text": message_text}],
                 }
-                item_id = getattr(item, "id", None)
-                if isinstance(item_id, str) and item_id:
+                item_id = _normalize_responses_item_id(getattr(item, "id", None), prefix="msg")
+                if item_id:
                     raw_message_item["id"] = item_id
                 if normalized_phase:
                     raw_message_item["phase"] = normalized_phase
@@ -926,8 +946,8 @@ def _normalize_codex_response(response: Any) -> tuple[Any, str]:
             encrypted = getattr(item, "encrypted_content", None)
             if isinstance(encrypted, str) and encrypted:
                 raw_item = {"type": "reasoning", "encrypted_content": encrypted}
-                item_id = getattr(item, "id", None)
-                if isinstance(item_id, str) and item_id:
+                item_id = _normalize_responses_item_id(getattr(item, "id", None), prefix="r")
+                if item_id:
                     raw_item["id"] = item_id
                 # Capture summary — required by the API when replaying reasoning items
                 summary = getattr(item, "summary", None)
